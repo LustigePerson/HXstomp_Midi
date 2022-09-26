@@ -19,8 +19,8 @@ int powerPin = 8; // set to HIGH and connect power to the midi circuit here. (no
 OneButton SwitchA(10, true); // Setup a new OneButton
 OneButton SwitchB(11, true); // Setup a new OneButton
 OneButton SwitchC(12, true); // Setup a new OneButton
-#define pressTime 250
-#define debounceTime 20
+#define pressTime 300
+#define debounceTime 25
 
 // ##################### General Variables ####################
 int n_banks = 3;
@@ -68,27 +68,29 @@ void setup()
   startupLED();
   enterBank();
 
+  // link the button functions
+  // Button A
+  SwitchA.attachClick(SwitchAclick);
+  SwitchA.attachLongPressStart(ModeUp);
+
+  // Button B
+  SwitchB.attachClick(SwitchBclick);
+  SwitchB.attachLongPressStart(ToggleBoost);
+
+  // Button C
+  SwitchC.attachClick(SwitchCclick);
+  SwitchC.attachLongPressStart(BankUp);
+
   // set timings
+  // longpress
   SwitchA.setPressTicks(pressTime);
   SwitchB.setPressTicks(pressTime);
   SwitchC.setPressTicks(pressTime);
 
+  // debounce
   SwitchA.setDebounceTicks(debounceTime);
   SwitchB.setDebounceTicks(debounceTime);
   SwitchC.setDebounceTicks(debounceTime);
-
-  // link the button functions
-  // Button A
-  SwitchA.attachClick(SwitchAclick);
-  SwitchA.attachLongPressStop(ModeUp);
-
-  // Button B
-  SwitchB.attachClick(SwitchBclick);
-  SwitchB.attachLongPressStop(ToggleBoost);
-
-  // Button C
-  SwitchC.attachClick(SwitchCclick);
-  SwitchC.attachLongPressStop(BankUp);
 }
 
 void loop()
@@ -247,6 +249,23 @@ void BankDown()
   enterBank();
 }
 
+void enterBank()
+{
+  if (currentBank == 0)
+  {
+    enter0;
+  }
+  else if (currentBank == 1)
+  {
+    enter1;
+  }
+  else if (currentBank == 2)
+  {
+    enter2;
+  }
+  SwitchLED();
+}
+
 void ModeUp()
 {
   SendCC(71, 4);
@@ -292,23 +311,6 @@ void SwitchLED()
     LED.setPixelColor(0, LED.Color(255, 255, 255));
   }
   LED.show();
-}
-
-void enterBank()
-{
-  if (currentBank == 0)
-  {
-    enter0;
-  }
-  else if (currentBank == 1)
-  {
-    enter1;
-  }
-  else if (currentBank == 2)
-  {
-    enter2;
-  }
-  SwitchLED();
 }
 
 void rainbow()
