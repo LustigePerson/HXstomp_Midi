@@ -33,3 +33,4 @@
 ## Routing Layout
 
 ![](HX_Stomp_Midi_Steckplatine.png)
+![](HX_Stomp_Midi_Schaltplan.png)
