@@ -1,4 +1,5 @@
 # HXstomp_Midi
+![](01_midi.jpg)
 
 ## Banks and Functions
 
