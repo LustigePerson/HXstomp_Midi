@@ -2,13 +2,13 @@
 
 ## Banks and Functions
 
-| Bank              |            |        0         |            |
-| :---------------- | :--------: | :--------------: | :--------: |
-| **Description**   |            |  Snapshot Mode   |            |
-| **On Bank Enter** |            | Stomp to FS mode |            |
-| **Button**        |   **A**    |      **B**       |   **C**    |
-| **Short Press**   | Snapshot 1 |    Snapshot 2    | Snapshot 3 |
-| **Long Press**    | FS Mode Up |   Boost CC 100   |  Bank Up   |
+| Bank              |            |          0           |            |
+| :---------------- | :--------: | :------------------: | :--------: |
+| **Description**   |            |    Snapshot Mode     |            |
+| **On Bank Enter** |            |  Stomp to Stomp mode |            |
+| **Button**        |   **A**    |        **B**         |   **C**    |
+| **Short Press**   | Snapshot 1 |      Snapshot 2      | Snapshot 3 |
+| **Long Press**    | FS Mode Up |     Boost CC 100     |  Bank Up   |
 
 ---
 
