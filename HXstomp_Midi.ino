@@ -93,8 +93,9 @@ void setup()
 
   startupLED();
 
-  looperEnabled = EEPROM.read(LOOPER_ENABLED_ADDR);
+  looperEnabled = EEPROM.read(LOOPER_ENABLED_ADDR); // Read looper state from EEPROM
 
+  // switch looper state if button is held
   unsigned long startupStart = millis();
   while (millis() - startupStart <= 1000)
   {
