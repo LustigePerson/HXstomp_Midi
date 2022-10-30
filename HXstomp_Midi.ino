@@ -2,9 +2,6 @@
 #include "OneButton.h"
 
 #include <Adafruit_NeoPixel.h>
-#ifdef __AVR__
-#include <avr/power.h> // Required for 16 MHz Adafruit Trinket
-#endif
 
 // ##################### LED ####################
 #define LEDPIN 4
@@ -28,6 +25,8 @@ int currentBank = 0;
 bool bypassActive = false;
 bool boostActive = false;   // CC 100 for Toggle
 bool FSextraActive = false; // CC 101 for Toggle
+int looperCurrent = 0;      // 0=stopped, 1=playing, 2=recording
+bool recModeRecord = true;  // rec or overdup
 
 #define MIDICHAN 1
 
@@ -55,6 +54,14 @@ bool FSextraActive = false; // CC 101 for Toggle
 #define b2_Bclick FS5()
 #define b2_Cclick ToggleFSextra()
 
+// ##################### Bank 3 ####################
+// ################## Looper Mode #################
+#define b3Color 255, 0, 0
+#define enter3 SendCC(71, 3)
+#define b3_Aclick LoopRecOverdub()
+#define b3_Bclick LoopPlayStop()
+#define b3_Cclick LoopUndoRedo()
+
 void setup()
 {
   Serial.begin(31250); // MIDI:31250 // SERIAL MONITOR:9600 OR 115200
@@ -65,8 +72,38 @@ void setup()
   digitalWrite(powerPin, HIGH); // Power up
   digitalWrite(gndPin, LOW);    // Power up
 
+  // set timings
+  // longpress
+  SwitchA.setPressTicks(pressTime);
+  SwitchB.setPressTicks(pressTime);
+  SwitchC.setPressTicks(pressTime);
+
+  // debounce
+  SwitchA.setDebounceTicks(debounceTime);
+  SwitchB.setDebounceTicks(debounceTime);
+  SwitchC.setDebounceTicks(debounceTime);
+
   startupLED();
-  enterBank();
+
+  unsigned long startupStart = millis();
+  while (millis() - startupStart <= 1000)
+  {
+    SwitchA.tick();
+    SwitchB.tick();
+    SwitchC.tick();
+
+    if (SwitchA.isLongPressed() || SwitchB.isLongPressed() || SwitchC.isLongPressed())
+    {
+      n_banks = 4;
+      LED.setPixelColor(0, LED.Color(255, 0, 0));
+      LED.show();
+      break;
+    }
+  }
+  delay(500);
+  LED.clear();
+  LED.show();
+  delay(250);
 
   // link the button functions
   // Button A
@@ -81,16 +118,8 @@ void setup()
   SwitchC.attachClick(SwitchCclick);
   SwitchC.attachLongPressStart(BankUp);
 
-  // set timings
-  // longpress
-  SwitchA.setPressTicks(pressTime);
-  SwitchB.setPressTicks(pressTime);
-  SwitchC.setPressTicks(pressTime);
-
-  // debounce
-  SwitchA.setDebounceTicks(debounceTime);
-  SwitchB.setDebounceTicks(debounceTime);
-  SwitchC.setDebounceTicks(debounceTime);
+  enterBank();
+  delay(500);
 }
 
 void loop()
@@ -129,6 +158,10 @@ void SwitchAclick()
   {
     b2_Aclick;
   }
+  else if (currentBank == 3)
+  {
+    b3_Aclick;
+  }
   else
   {
     ;
@@ -149,6 +182,10 @@ void SwitchBclick()
   {
     b2_Bclick;
   }
+  else if (currentBank == 3)
+  {
+    b3_Bclick;
+  }
   else
   {
     ;
@@ -168,6 +205,10 @@ void SwitchCclick()
   else if (currentBank == 2)
   {
     b2_Cclick;
+  }
+  else if (currentBank == 3)
+  {
+    b3_Cclick;
   }
   else
   {
@@ -237,6 +278,46 @@ void TapTempo()
   SendCC(64, 127);
 }
 
+void LoopRecOverdub()
+{
+  if (recModeRecord == 0)
+  {
+    SendCC(60, 127);   // Record
+    recModeRecord = 1; // recModeRecord press now overdups
+  }
+  else if (recModeRecord == 1)
+  {
+    SendCC(60, 0); // Overdup
+  }
+  else
+  {
+    LED.setPixelColor(0, LED.Color(255, 255, 255));
+    LED.show();
+  }
+  looperCurrent = 2;
+}
+
+void LoopPlayStop()
+{
+  if (looperCurrent == 0 || looperCurrent == 2)
+  {
+    SendCC(61, 127); // start playing
+    looperCurrent = 1;
+    recModeRecord = 1; // recModeRecord press now overdups
+  }
+  else if (looperCurrent == 1)
+  {
+    SendCC(61, 0); // stop playing
+    looperCurrent = 0;
+    recModeRecord = 0; // recModeRecord press now records new loop
+  }
+}
+
+void LoopUndoRedo()
+{
+  SendCC(63, 127);
+}
+
 void BankUp()
 {
   currentBank = (currentBank + 1) % n_banks;
@@ -263,6 +344,10 @@ void enterBank()
   {
     enter2;
   }
+  else if (currentBank == 3)
+  {
+    enter3;
+  }
   SwitchLED();
 }
 
@@ -283,13 +368,10 @@ void startupLED()
   rainbow();
   LED.clear();
   LED.show();
-  delay(100);
-  SwitchLED();
-  delay(50);
-  LED.clear();
+  delay(250);
+  LED.setPixelColor(0, LED.Color(255, 255, 255));
   LED.show();
-  delay(100);
-  SwitchLED();
+  delay(500);
 }
 
 void SwitchLED()
@@ -305,6 +387,10 @@ void SwitchLED()
   else if (currentBank == 2)
   {
     LED.setPixelColor(0, LED.Color(b2Color));
+  }
+  else if (currentBank == 3)
+  {
+    LED.setPixelColor(0, LED.Color(b3Color));
   }
   else
   {
