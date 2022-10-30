@@ -22,6 +22,10 @@ OneButton SwitchC(12, true); // Setup a new OneButton
 // ##################### General Variables ####################
 int n_banks = 3;
 int currentBank = 0;
+
+unsigned long blinkPreviousMillis = 0;
+int blinkInterval = 0;
+
 bool bypassActive = false;
 bool boostActive = false;   // CC 100 for Toggle
 bool FSextraActive = false; // CC 101 for Toggle
@@ -128,6 +132,11 @@ void loop()
   SwitchA.tick();
   SwitchB.tick();
   SwitchC.tick();
+
+  if (blinkInterval != 0)
+  {
+    blinkLED();
+  }
 
 } // Loop
 
@@ -295,6 +304,7 @@ void LoopRecOverdub()
     LED.show();
   }
   looperCurrent = 2;
+  blinkInterval = 100;
 }
 
 void LoopPlayStop()
@@ -303,12 +313,15 @@ void LoopPlayStop()
   {
     SendCC(61, 127); // start playing
     looperCurrent = 1;
+    blinkInterval = 250;
     recModeRecord = 1; // recModeRecord press now overdups
   }
   else if (looperCurrent == 1)
   {
     SendCC(61, 0); // stop playing
     looperCurrent = 0;
+    blinkInterval = 0;
+    SwitchLED();
     recModeRecord = 0; // recModeRecord press now records new loop
   }
 }
@@ -429,4 +442,26 @@ uint32_t Wheel(byte WheelPos)
   }
   WheelPos -= 170;
   return LED.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
+
+void blinkLED()
+{
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - blinkPreviousMillis >= blinkInterval)
+  {
+    // save the last time you blinked the LED
+    blinkPreviousMillis = currentMillis;
+
+    // if the LED is off turn it on and vice-versa:
+    if (LED.getPixelColor(0) == 0)
+    {
+      SwitchLED();
+    }
+    else
+    {
+      LED.clear();
+      LED.show();
+    }
+  }
 }
