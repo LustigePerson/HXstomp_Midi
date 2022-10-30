@@ -42,8 +42,13 @@
 | **Short Press**   | Rec/OverD  |     Play/Stop      | Undo/Redo |
 | **Long Press**    | FS Mode Up |    Boost CC 100    |  Bank Up  |
 
-- **Looper mode needs to be activate on startup**
-  - By long pressing any button while LED is white (when LED turns red looper mode is engaged)
+- **Looper mode can be enabled / disabled on startup**
+  - By long pressing any button while LED is white
+- After the white light the LED flashed 3 times
+  - White if looper is disabled
+  - Red if looper is enabled
+- The looper state (enabled / disabled) is preserved
+During Operation:    
 - LED flashing **fast** during recording / overdubbing
 - LED flashing **slow** during playback
 

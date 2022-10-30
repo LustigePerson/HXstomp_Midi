@@ -1,11 +1,12 @@
 #include <Wire.h>
 #include "OneButton.h"
+#include <EEPROM.h>
 
 #include <Adafruit_NeoPixel.h>
 
 // ##################### LED ####################
 #define LEDPIN 4
-#define maxLedBrighntess 50
+#define maxLedBrighntess 45
 Adafruit_NeoPixel LED(1, LEDPIN, NEO_RGB + NEO_KHZ800);
 
 // ##################### Power and GND for Midi In and Midi OUT ####################
@@ -20,7 +21,7 @@ OneButton SwitchC(12, true); // Setup a new OneButton
 #define debounceTime 25
 
 // ##################### General Variables ####################
-int n_banks = 3;
+int n_banks;
 int currentBank = 0;
 
 unsigned long blinkPreviousMillis = 0;
@@ -29,8 +30,11 @@ int blinkInterval = 0;
 bool bypassActive = false;
 bool boostActive = false;   // CC 100 for Toggle
 bool FSextraActive = false; // CC 101 for Toggle
-int looperCurrent = 0;      // 0=stopped, 1=playing, 2=recording
-bool recModeRecord = true;  // rec or overdup
+
+#define LOOPER_ENABLED_ADDR 1 // stores if looper control is enabled in EPROM
+int looperEnabled;
+int looperCurrent = 0;     // 0=stopped, 1=playing, 2=recording
+bool recModeRecord = true; // rec or overdup
 
 #define MIDICHAN 1
 
@@ -89,6 +93,8 @@ void setup()
 
   startupLED();
 
+  looperEnabled = EEPROM.read(LOOPER_ENABLED_ADDR);
+
   unsigned long startupStart = millis();
   while (millis() - startupStart <= 1000)
   {
@@ -98,13 +104,22 @@ void setup()
 
     if (SwitchA.isLongPressed() || SwitchB.isLongPressed() || SwitchC.isLongPressed())
     {
-      n_banks = 4;
-      LED.setPixelColor(0, LED.Color(255, 0, 0));
-      LED.show();
+      if (looperEnabled == 1)
+      {
+        looperEnabled = 0;
+      }
+      else
+      {
+        looperEnabled = 1;
+      }
+      EEPROM.update(LOOPER_ENABLED_ADDR, looperEnabled);
+
       break;
     }
   }
-  delay(500);
+
+  startUpLooper();
+
   LED.clear();
   LED.show();
   delay(250);
@@ -135,7 +150,7 @@ void loop()
 
   if (blinkInterval != 0)
   {
-    blinkLED();
+    blinkLoopLED();
   }
 
 } // Loop
@@ -384,7 +399,23 @@ void startupLED()
   delay(250);
   LED.setPixelColor(0, LED.Color(255, 255, 255));
   LED.show();
-  delay(500);
+  delay(250);
+}
+
+void startUpLooper()
+{
+
+  if (looperEnabled == 1)
+  {
+    n_banks = 4;
+    blinkLED(3, 250, 255, 0, 0);
+  }
+  else
+  {
+    looperEnabled = 0;
+    n_banks = 3;
+    blinkLED(3, 250, 255, 255, 255);
+  }
 }
 
 void SwitchLED()
@@ -410,6 +441,20 @@ void SwitchLED()
     LED.setPixelColor(0, LED.Color(255, 255, 255));
   }
   LED.show();
+}
+
+void blinkLED(int times, int delay_ms, int red, int green, int blue)
+{
+  int i;
+  for (i = 0; i < times; i++)
+  {
+    LED.clear();
+    LED.show();
+    delay(delay_ms);
+    LED.setPixelColor(0, LED.Color(red, green, blue));
+    LED.show();
+    delay(delay_ms);
+  }
 }
 
 void rainbow()
@@ -444,7 +489,7 @@ uint32_t Wheel(byte WheelPos)
   return LED.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
-void blinkLED()
+void blinkLoopLED()
 {
   unsigned long currentMillis = millis();
 
