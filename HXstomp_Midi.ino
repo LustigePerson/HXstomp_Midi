@@ -1,14 +1,12 @@
 #include <Wire.h>
 #include "OneButton.h"
+#include <EEPROM.h>
 
 #include <Adafruit_NeoPixel.h>
-#ifdef __AVR__
-#include <avr/power.h> // Required for 16 MHz Adafruit Trinket
-#endif
 
 // ##################### LED ####################
 #define LEDPIN 4
-#define maxLedBrighntess 50
+#define maxLedBrighntess 45
 Adafruit_NeoPixel LED(1, LEDPIN, NEO_RGB + NEO_KHZ800);
 
 // ##################### Power and GND for Midi In and Midi OUT ####################
@@ -23,11 +21,20 @@ OneButton SwitchC(12, true); // Setup a new OneButton
 #define debounceTime 25
 
 // ##################### General Variables ####################
-int n_banks = 3;
+int n_banks;
 int currentBank = 0;
+
+unsigned long blinkPreviousMillis = 0;
+int blinkInterval = 0;
+
 bool bypassActive = false;
 bool boostActive = false;   // CC 100 for Toggle
 bool FSextraActive = false; // CC 101 for Toggle
+
+#define LOOPER_ENABLED_ADDR 1 // stores if looper control is enabled in EPROM
+int looperEnabled;
+int looperCurrent = 0;     // 0=stopped, 1=playing, 2=recording
+bool recModeRecord = true; // rec or overdup
 
 #define MIDICHAN 1
 
@@ -55,6 +62,14 @@ bool FSextraActive = false; // CC 101 for Toggle
 #define b2_Bclick FS5()
 #define b2_Cclick ToggleFSextra()
 
+// ##################### Bank 3 ####################
+// ################## Looper Mode #################
+#define b3Color 255, 0, 0
+#define enter3 SendCC(71, 3)
+#define b3_Aclick LoopRecOverdub()
+#define b3_Bclick LoopPlayStop()
+#define b3_Cclick LoopUndoRedo()
+
 void setup()
 {
   Serial.begin(31250); // MIDI:31250 // SERIAL MONITOR:9600 OR 115200
@@ -65,8 +80,50 @@ void setup()
   digitalWrite(powerPin, HIGH); // Power up
   digitalWrite(gndPin, LOW);    // Power up
 
+  // set timings
+  // longpress
+  SwitchA.setPressTicks(pressTime);
+  SwitchB.setPressTicks(pressTime);
+  SwitchC.setPressTicks(pressTime);
+
+  // debounce
+  SwitchA.setDebounceTicks(debounceTime);
+  SwitchB.setDebounceTicks(debounceTime);
+  SwitchC.setDebounceTicks(debounceTime);
+
   startupLED();
-  enterBank();
+
+  looperEnabled = EEPROM.read(LOOPER_ENABLED_ADDR); // Read looper state from EEPROM
+
+  // switch looper state if button is held
+  unsigned long startupStart = millis();
+  while (millis() - startupStart <= 1000)
+  {
+    SwitchA.tick();
+    SwitchB.tick();
+    SwitchC.tick();
+
+    if (SwitchA.isLongPressed() || SwitchB.isLongPressed() || SwitchC.isLongPressed())
+    {
+      if (looperEnabled == 1)
+      {
+        looperEnabled = 0;
+      }
+      else
+      {
+        looperEnabled = 1;
+      }
+      EEPROM.update(LOOPER_ENABLED_ADDR, looperEnabled);
+
+      break;
+    }
+  }
+
+  startUpLooper();
+
+  LED.clear();
+  LED.show();
+  delay(250);
 
   // link the button functions
   // Button A
@@ -81,16 +138,8 @@ void setup()
   SwitchC.attachClick(SwitchCclick);
   SwitchC.attachLongPressStart(BankUp);
 
-  // set timings
-  // longpress
-  SwitchA.setPressTicks(pressTime);
-  SwitchB.setPressTicks(pressTime);
-  SwitchC.setPressTicks(pressTime);
-
-  // debounce
-  SwitchA.setDebounceTicks(debounceTime);
-  SwitchB.setDebounceTicks(debounceTime);
-  SwitchC.setDebounceTicks(debounceTime);
+  enterBank();
+  delay(500);
 }
 
 void loop()
@@ -99,6 +148,11 @@ void loop()
   SwitchA.tick();
   SwitchB.tick();
   SwitchC.tick();
+
+  if (blinkInterval != 0)
+  {
+    blinkLoopLED();
+  }
 
 } // Loop
 
@@ -129,6 +183,10 @@ void SwitchAclick()
   {
     b2_Aclick;
   }
+  else if (currentBank == 3)
+  {
+    b3_Aclick;
+  }
   else
   {
     ;
@@ -149,6 +207,10 @@ void SwitchBclick()
   {
     b2_Bclick;
   }
+  else if (currentBank == 3)
+  {
+    b3_Bclick;
+  }
   else
   {
     ;
@@ -168,6 +230,10 @@ void SwitchCclick()
   else if (currentBank == 2)
   {
     b2_Cclick;
+  }
+  else if (currentBank == 3)
+  {
+    b3_Cclick;
   }
   else
   {
@@ -237,6 +303,50 @@ void TapTempo()
   SendCC(64, 127);
 }
 
+void LoopRecOverdub()
+{
+  if (recModeRecord == 0)
+  {
+    SendCC(60, 127);   // Record
+    recModeRecord = 1; // recModeRecord press now overdups
+  }
+  else if (recModeRecord == 1)
+  {
+    SendCC(60, 0); // Overdup
+  }
+  else
+  {
+    LED.setPixelColor(0, LED.Color(255, 255, 255));
+    LED.show();
+  }
+  looperCurrent = 2;
+  blinkInterval = 100;
+}
+
+void LoopPlayStop()
+{
+  if (looperCurrent == 0 || looperCurrent == 2)
+  {
+    SendCC(61, 127); // start playing
+    looperCurrent = 1;
+    blinkInterval = 250;
+    recModeRecord = 1; // recModeRecord press now overdups
+  }
+  else if (looperCurrent == 1)
+  {
+    SendCC(61, 0); // stop playing
+    looperCurrent = 0;
+    blinkInterval = 0;
+    SwitchLED();
+    recModeRecord = 0; // recModeRecord press now records new loop
+  }
+}
+
+void LoopUndoRedo()
+{
+  SendCC(63, 127);
+}
+
 void BankUp()
 {
   currentBank = (currentBank + 1) % n_banks;
@@ -263,6 +373,10 @@ void enterBank()
   {
     enter2;
   }
+  else if (currentBank == 3)
+  {
+    enter3;
+  }
   SwitchLED();
 }
 
@@ -283,13 +397,26 @@ void startupLED()
   rainbow();
   LED.clear();
   LED.show();
-  delay(100);
-  SwitchLED();
-  delay(50);
-  LED.clear();
+  delay(250);
+  LED.setPixelColor(0, LED.Color(255, 255, 255));
   LED.show();
-  delay(100);
-  SwitchLED();
+  delay(250);
+}
+
+void startUpLooper()
+{
+
+  if (looperEnabled == 1)
+  {
+    n_banks = 4;
+    blinkLED(3, 250, 255, 0, 0);
+  }
+  else
+  {
+    looperEnabled = 0;
+    n_banks = 3;
+    blinkLED(3, 250, 255, 255, 255);
+  }
 }
 
 void SwitchLED()
@@ -306,11 +433,29 @@ void SwitchLED()
   {
     LED.setPixelColor(0, LED.Color(b2Color));
   }
+  else if (currentBank == 3)
+  {
+    LED.setPixelColor(0, LED.Color(b3Color));
+  }
   else
   {
     LED.setPixelColor(0, LED.Color(255, 255, 255));
   }
   LED.show();
+}
+
+void blinkLED(int times, int delay_ms, int red, int green, int blue)
+{
+  int i;
+  for (i = 0; i < times; i++)
+  {
+    LED.clear();
+    LED.show();
+    delay(delay_ms);
+    LED.setPixelColor(0, LED.Color(red, green, blue));
+    LED.show();
+    delay(delay_ms);
+  }
 }
 
 void rainbow()
@@ -343,4 +488,26 @@ uint32_t Wheel(byte WheelPos)
   }
   WheelPos -= 170;
   return LED.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
+
+void blinkLoopLED()
+{
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - blinkPreviousMillis >= blinkInterval)
+  {
+    // save the last time you blinked the LED
+    blinkPreviousMillis = currentMillis;
+
+    // if the LED is off turn it on and vice-versa:
+    if (LED.getPixelColor(0) == 0)
+    {
+      SwitchLED();
+    }
+    else
+    {
+      LED.clear();
+      LED.show();
+    }
+  }
 }
