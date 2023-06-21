@@ -305,12 +305,12 @@ void TapTempo()
 
 void LoopRecOverdub()
 {
-  if (recModeRecord == 0)
+  if (recModeRecord == true)
   {
-    SendCC(60, 127);   // Record
-    recModeRecord = 1; // recModeRecord press now overdups
+    SendCC(60, 127);       // Record
+    recModeRecord = false; // recModeRecord press now overdups
   }
-  else if (recModeRecord == 1)
+  else if (recModeRecord == false)
   {
     SendCC(60, 0); // Overdup
   }
@@ -330,7 +330,7 @@ void LoopPlayStop()
     SendCC(61, 127); // start playing
     looperCurrent = 1;
     blinkInterval = 250;
-    recModeRecord = 1; // recModeRecord press now overdups
+    recModeRecord = false; // recModeRecord press now overdups
   }
   else if (looperCurrent == 1)
   {
@@ -338,7 +338,7 @@ void LoopPlayStop()
     looperCurrent = 0;
     blinkInterval = 0;
     SwitchLED();
-    recModeRecord = 0; // recModeRecord press now records new loop
+    recModeRecord = true; // recModeRecord press now records new loop
   }
 }
 
