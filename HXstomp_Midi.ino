@@ -48,19 +48,19 @@ bool recModeRecord = true; // rec or overdup
 
 // ##################### Bank 1 ####################
 // #################### FS Mode ###################
-#define b2Color 51, 255, 255
-#define enter2 SendCC(71, 3)
-#define b2_Aclick FS3()
-#define b2_Bclick FS4()
-#define b2_Cclick FS5()
+#define b1Color 153, 255, 51
+#define enter1 SendCC(71, 3)
+#define b1_Aclick FS3()
+#define b1_Bclick FS4()
+#define b1_Cclick FS5()
 
 // ##################### Bank 2 ####################
 // ################## Looper Mode #################
-#define b3Color 255, 0, 0
-#define enter3 SendCC(71, 3)
-#define b3_Aclick LoopRecOverdub()
-#define b3_Bclick LoopPlayStop()
-#define b3_Cclick LoopUndoRedo()
+#define b2Color 255, 0, 0
+#define enter2 SendCC(71, 3)
+#define b2_Aclick LoopRecOverdub()
+#define b2_Bclick LoopPlayStop()
+#define b2_Cclick LoopUndoRedo()
 
 void setup()
 {
@@ -175,10 +175,6 @@ void SwitchAclick()
   {
     b2_Aclick;
   }
-  else if (currentBank == 3)
-  {
-    b3_Aclick;
-  }
   else
   {
     ;
@@ -199,10 +195,6 @@ void SwitchBclick()
   {
     b2_Bclick;
   }
-  else if (currentBank == 3)
-  {
-    b3_Bclick;
-  }
   else
   {
     ;
@@ -222,10 +214,6 @@ void SwitchCclick()
   else if (currentBank == 2)
   {
     b2_Cclick;
-  }
-  else if (currentBank == 3)
-  {
-    b3_Cclick;
   }
   else
   {
@@ -370,10 +358,6 @@ void enterBank()
   {
     enter2;
   }
-  else if (currentBank == 3)
-  {
-    enter3;
-  }
   SwitchLED();
 }
 
@@ -428,10 +412,6 @@ void SwitchLED()
   else if (currentBank == 2)
   {
     LED.setPixelColor(0, LED.Color(b2Color));
-  }
-  else if (currentBank == 3)
-  {
-    LED.setPixelColor(0, LED.Color(b3Color));
   }
   else
   {
