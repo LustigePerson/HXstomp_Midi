@@ -21,7 +21,7 @@ OneButton SwitchC(12, true); // Setup a new OneButton
 #define debounceTime 25
 
 // ##################### General Variables ####################
-int n_banks;
+int n_banks = 2;
 int currentBank = 0;
 
 unsigned long blinkPreviousMillis = 0;
@@ -47,22 +47,14 @@ bool recModeRecord = true; // rec or overdup
 #define b0_Cclick SetSnapshot(3)
 
 // ##################### Bank 1 ####################
-// ################## Tap / Tuner #################
-#define b1Color 153, 255, 51
-#define enter1 SendCC(71, 3)
-#define b1_Aclick ToggleTuner()
-#define b1_Bclick TapTempo()
-#define b1_Cclick HXbypass()
-
-// ##################### Bank 2 ####################
 // #################### FS Mode ###################
 #define b2Color 51, 255, 255
 #define enter2 SendCC(71, 3)
-#define b2_Aclick FS4()
-#define b2_Bclick FS5()
-#define b2_Cclick ToggleFSextra()
+#define b2_Aclick FS3()
+#define b2_Bclick FS4()
+#define b2_Cclick FS5()
 
-// ##################### Bank 3 ####################
+// ##################### Bank 2 ####################
 // ################## Looper Mode #################
 #define b3Color 255, 0, 0
 #define enter3 SendCC(71, 3)
@@ -241,6 +233,11 @@ void SwitchCclick()
   }
 }
 
+void FS3()
+{
+  SendCC(51, 127);
+}
+
 void FS4()
 {
   SendCC(52, 127);
@@ -408,13 +405,12 @@ void startUpLooper()
 
   if (looperEnabled == 1)
   {
-    n_banks = 4;
+    n_banks = n_banks += 1;
     blinkLED(3, 250, 255, 0, 0);
   }
   else
   {
     looperEnabled = 0;
-    n_banks = 3;
     blinkLED(3, 250, 255, 255, 255);
   }
 }
