@@ -42,13 +42,18 @@
 | **Short Press**   | Rec/OverD  |     Play/Stop      | Undo/Redo |
 | **Long Press**    | FS Mode Up |    Boost CC 100    |  Bank Up  |
 
-- **Looper mode can be enabled / disabled on startup**
-  - By long pressing any button while LED is white
-- After the white light the LED flashed 3 times
-  - White if looper is disabled
-  - Red if looper is enabled
-- The looper state (enabled / disabled) is preserved
-During Operation:    
+## Enable / disable Banks Completely
+
+Banks 1, 2, and 3 can be enabled/disabled during startup
+
+- As soon as the LED is white, long pressing the buttons `A`,`B`, and/or `C` toggles availability of banks `1`,`2`, and/or `3` respectively
+- After the white LED turn of all activated Bank colors are shown once, before `Bank 0` is activated
+- The bank state (enabled / disabled) is preserved
+
+## Looper
+
+During Operation:
+
 - LED flashing **fast** during recording / overdubbing
 - LED flashing **slow** during playback
 

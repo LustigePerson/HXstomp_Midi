@@ -21,9 +21,6 @@ OneButton SwitchC(12, true); // Setup a new OneButton
 #define debounceTime 25
 
 // ##################### General Variables ####################
-int n_banks;
-int currentBank = 0;
-
 unsigned long blinkPreviousMillis = 0;
 int blinkInterval = 0;
 
@@ -31,12 +28,15 @@ bool bypassActive = false;
 bool boostActive = false;   // CC 100 for Toggle
 bool FSextraActive = false; // CC 101 for Toggle
 
-#define LOOPER_ENABLED_ADDR 1 // stores if looper control is enabled in EPROM
-int looperEnabled;
 int looperCurrent = 0;     // 0=stopped, 1=playing, 2=recording
 bool recModeRecord = true; // rec or overdup
 
 #define MIDICHAN 1
+
+// ##################### Banks ####################
+const int n_banks = 4;
+int currentBank = 0;
+bool bankEnabled[n_banks];
 
 // ##################### Bank 0 ####################
 // ################# Snapshot Mode ################
@@ -91,11 +91,30 @@ void setup()
   SwitchB.setDebounceTicks(debounceTime);
   SwitchC.setDebounceTicks(debounceTime);
 
+  // Initialize bankEnabled array to all enable for first startup
+  for (int i = 0; i < n_banks; ++i)
+  {
+    bankEnabled[i] = true;
+  }
+  // Read bank enable/disable states from EEPROM
+  for (int i = 0; i < n_banks; ++i)
+  {
+    byte storedValue = EEPROM.read(i);
+    if (storedValue != 0 && storedValue != 1)
+    {
+      // If the stored value is not 0 or 1, overwrite it with the default setting from bankEnabled
+      EEPROM.update(i, bankEnabled[i]);
+    }
+    else
+    {
+      // Update the state only if the stored value is 0 (false) or 1 (true)
+      bankEnabled[i] = storedValue;
+    }
+  }
+
   startupLED();
 
-  looperEnabled = EEPROM.read(LOOPER_ENABLED_ADDR); // Read looper state from EEPROM
-
-  // switch looper state if button is held
+  // switch bank state if button A/B is held
   unsigned long startupStart = millis();
   while (millis() - startupStart <= 1000)
   {
@@ -105,25 +124,26 @@ void setup()
 
     if (SwitchA.isLongPressed() || SwitchB.isLongPressed() || SwitchC.isLongPressed())
     {
-      if (looperEnabled == 1)
+      if (SwitchA.isLongPressed())
       {
-        looperEnabled = 0;
+        bankEnabled[1] = !bankEnabled[1];
+        EEPROM.update(1, bankEnabled[1]);
       }
-      else
+      if (SwitchB.isLongPressed())
       {
-        looperEnabled = 1;
+        bankEnabled[2] = !bankEnabled[2];
+        EEPROM.update(2, bankEnabled[2]);
       }
-      EEPROM.update(LOOPER_ENABLED_ADDR, looperEnabled);
-
+      if (SwitchC.isLongPressed())
+      {
+        bankEnabled[3] = !bankEnabled[3];
+        EEPROM.update(3, bankEnabled[3]);
+      }
       break;
     }
   }
 
-  startUpLooper();
-
-  LED.clear();
-  LED.show();
-  delay(250);
+  showInitializedBanks();
 
   // link the button functions
   // Button A
@@ -139,7 +159,6 @@ void setup()
   SwitchC.attachLongPressStart(BankUp);
 
   enterBank();
-  delay(500);
 }
 
 void loop()
@@ -349,13 +368,19 @@ void LoopUndoRedo()
 
 void BankUp()
 {
-  currentBank = (currentBank + 1) % n_banks;
+  do
+  {
+    currentBank = (currentBank + 1) % n_banks;
+  } while (!bankEnabled[currentBank]);
   enterBank();
 }
 
 void BankDown()
 {
-  currentBank = (currentBank - 1) % n_banks;
+  do
+  {
+    currentBank = (currentBank - 1 + n_banks) % n_banks;
+  } while (!bankEnabled[currentBank]);
   enterBank();
 }
 
@@ -400,23 +425,29 @@ void startupLED()
   delay(250);
   LED.setPixelColor(0, LED.Color(255, 255, 255));
   LED.show();
-  delay(250);
+  delay(500);
 }
 
-void startUpLooper()
+void showInitializedBanks()
 {
-
-  if (looperEnabled == 1)
+  LED.clear();
+  LED.show();
+  delay(250);
+  int originalBank = currentBank;
+  for (int i = 0; i < n_banks; ++i)
   {
-    n_banks = 4;
-    blinkLED(3, 250, 255, 0, 0);
+    if (bankEnabled[i])
+    {
+      currentBank = i;
+      SwitchLED();
+      delay(550);
+      LED.clear();
+      LED.show();
+      delay(250);
+    }
   }
-  else
-  {
-    looperEnabled = 0;
-    n_banks = 3;
-    blinkLED(3, 250, 255, 255, 255);
-  }
+  currentBank = originalBank;
+  delay(500);
 }
 
 void SwitchLED()
@@ -461,7 +492,7 @@ void blinkLED(int times, int delay_ms, int red, int green, int blue)
 void rainbow()
 {
   int i, j;
-  for (i = 0; i < 2; i++)
+  for (i = 0; i < 1; i++)
   {
     for (j = 0; j <= 255; j++)
     {
