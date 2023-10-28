@@ -42,7 +42,7 @@
 | **Short Press**   | Rec/OverD  |     Play/Stop      | Undo/Redo |
 | **Long Press**    | FS Mode Up |    Boost CC 100    |  Bank Up  |
 
-## Enable / disable Banks Completely
+## Enable / Disable Banks Completely
 
 Banks 1, 2, and 3 can be enabled/disabled during startup
 
