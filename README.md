@@ -58,6 +58,7 @@ During Operation:
 - LED flashing **slow** during playback
 
 ## Routing Layout
+**WATCH OUT:** WS2812B LED will only work correctly with 5V, so select the appropriate board, use an additional power regulator or another LED Setup.
 
 ![](HX_Stomp_Midi_Steckplatine.png)
 ![](HX_Stomp_Midi_Schaltplan.png)
