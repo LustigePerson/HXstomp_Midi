@@ -1,12 +1,11 @@
 #include <Wire.h>
 #include "OneButton.h"
 #include <EEPROM.h>
-
-#include <Adafruit_NeoPixel.h>
+#include "config.h"            // Include the new configuration file
+#include <Adafruit_NeoPixel.h> // Moved after config.h to ensure LEDPIN and maxLedBrighntess are defined
 
 // ##################### LED ####################
-#define LEDPIN 4
-#define maxLedBrighntess 45
+// LEDPIN and maxLedBrighntess are now defined in config.h
 Adafruit_NeoPixel LED(1, LEDPIN, NEO_RGB + NEO_KHZ800);
 
 // ##################### Power and GND for Midi In and Midi OUT ####################
@@ -34,41 +33,96 @@ bool recModeRecord = true; // rec or overdup
 #define MIDICHAN 1
 
 // ##################### Banks ####################
-const int n_banks = 4;
+const int n_banks = N_BANKS; // Use N_BANKS from config.h
 int currentBank = 0;
 bool bankEnabled[n_banks];
 
-// ##################### Bank 0 ####################
-// ################# Snapshot Mode ################
-#define b0Color 255, 0, 165
-#define enter0 SendCC(71, 0)
-#define b0_Aclick SetSnapshot(1)
-#define b0_Bclick SetSnapshot(2)
-#define b0_Cclick SetSnapshot(3)
+// Removed hardcoded bank configurations, now in config.h
 
-// ##################### Bank 1 ####################
-// ################## Tap / Tuner #################
-#define b1Color 153, 255, 51
-#define enter1 SendCC(71, 3)
-#define b1_Aclick ToggleTuner()
-#define b1_Bclick TapTempo()
-#define b1_Cclick HXbypass()
+// Helper function to execute an action based on its type
+void executeAction(Action action)
+{
+  switch (action.type)
+  {
+  case ACTION_MIDI_CC:
+    SendCC(action.midi_cc.cc_number, action.midi_cc.cc_value);
+    break;
+  case ACTION_INTERNAL_FUNCTION:
+    switch (action.internal_func)
+    {
+    case FUNC_TOGGLE_TUNER:
+      ToggleTuner();
+      break;
+    case FUNC_TAP_TEMPO:
+      TapTempo();
+      break;
+    case FUNC_HX_BYPASS:
+      HXbypass();
+      break;
+    case FUNC_FS4:
+      FS4();
+      break;
+    case FUNC_FS5:
+      FS5();
+      break;
+    case FUNC_TOGGLE_BOOST:
+      ToggleBoost();
+      break;
+    case FUNC_TOGGLE_FS_EXTRA:
+      ToggleFSextra();
+      break;
+    case FUNC_LOOP_REC_OVERDUB:
+      LoopRecOverdub();
+      break;
+    case FUNC_LOOP_PLAY_STOP:
+      LoopPlayStop();
+      break;
+    case FUNC_LOOP_UNDO_REDO:
+      LoopUndoRedo();
+      break;
+    case FUNC_BANK_UP:
+      BankUp();
+      break;
+    case FUNC_MODE_UP:
+      ModeUp();
+      break;
+    case FUNC_BANK_DOWN:
+      BankDown();
+      break;
+    case FUNC_MODE_DOWN:
+      ModeDown();
+      break;
+    case FUNC_NONE:
+    default:
+      // Do nothing for FUNC_NONE or unknown functions
+      break;
+    }
+    break;
+  case ACTION_SET_SNAPSHOT:
+    SetSnapshot(action.snapshot_number);
+    break;
+  case ACTION_NONE:
+  default:
+    // Do nothing for ACTION_NONE or unknown action types
+    break;
+  }
+}
 
-// ##################### Bank 2 ####################
-// #################### FS Mode ###################
-#define b2Color 51, 255, 255
-#define enter2 SendCC(71, 3)
-#define b2_Aclick FS4()
-#define b2_Bclick FS5()
-#define b2_Cclick ToggleFSextra()
+// Wrapper functions for long press events
+void handleLongPressA()
+{
+  executeAction(bankConfigs[currentBank].buttonA.long_press_action);
+}
 
-// ##################### Bank 3 ####################
-// ################## Looper Mode #################
-#define b3Color 255, 0, 0
-#define enter3 SendCC(71, 3)
-#define b3_Aclick LoopRecOverdub()
-#define b3_Bclick LoopPlayStop()
-#define b3_Cclick LoopUndoRedo()
+void handleLongPressB()
+{
+  executeAction(bankConfigs[currentBank].buttonB.long_press_action);
+}
+
+void handleLongPressC()
+{
+  executeAction(bankConfigs[currentBank].buttonC.long_press_action);
+}
 
 void setup()
 {
@@ -148,15 +202,15 @@ void setup()
   // link the button functions
   // Button A
   SwitchA.attachClick(SwitchAclick);
-  SwitchA.attachLongPressStart(ModeUp);
+  SwitchA.attachLongPressStart(handleLongPressA); // Updated to use wrapper
 
   // Button B
   SwitchB.attachClick(SwitchBclick);
-  SwitchB.attachLongPressStart(ToggleBoost);
+  SwitchB.attachLongPressStart(handleLongPressB); // Updated to use wrapper
 
   // Button C
   SwitchC.attachClick(SwitchCclick);
-  SwitchC.attachLongPressStart(BankUp);
+  SwitchC.attachLongPressStart(handleLongPressC); // Updated to use wrapper
 
   enterBank();
 }
@@ -190,74 +244,17 @@ void SetSnapshot(int n)
 
 void SwitchAclick()
 {
-  if (currentBank == 0)
-  {
-    b0_Aclick;
-  }
-  else if (currentBank == 1)
-  {
-    b1_Aclick;
-  }
-  else if (currentBank == 2)
-  {
-    b2_Aclick;
-  }
-  else if (currentBank == 3)
-  {
-    b3_Aclick;
-  }
-  else
-  {
-    ;
-  }
+  executeAction(bankConfigs[currentBank].buttonA.click_action);
 }
 
 void SwitchBclick()
 {
-  if (currentBank == 0)
-  {
-    b0_Bclick;
-  }
-  else if (currentBank == 1)
-  {
-    b1_Bclick;
-  }
-  else if (currentBank == 2)
-  {
-    b2_Bclick;
-  }
-  else if (currentBank == 3)
-  {
-    b3_Bclick;
-  }
-  else
-  {
-    ;
-  }
+  executeAction(bankConfigs[currentBank].buttonB.click_action);
 }
 
 void SwitchCclick()
 {
-  if (currentBank == 0)
-  {
-    b0_Cclick;
-  }
-  else if (currentBank == 1)
-  {
-    b1_Cclick;
-  }
-  else if (currentBank == 2)
-  {
-    b2_Cclick;
-  }
-  else if (currentBank == 3)
-  {
-    b3_Cclick;
-  }
-  else
-  {
-    ;
-  }
+  executeAction(bankConfigs[currentBank].buttonC.click_action);
 }
 
 void FS4()
@@ -386,22 +383,7 @@ void BankDown()
 
 void enterBank()
 {
-  if (currentBank == 0)
-  {
-    enter0;
-  }
-  else if (currentBank == 1)
-  {
-    enter1;
-  }
-  else if (currentBank == 2)
-  {
-    enter2;
-  }
-  else if (currentBank == 3)
-  {
-    enter3;
-  }
+  executeAction(bankConfigs[currentBank].enter_action);
   SwitchLED();
 }
 
@@ -452,26 +434,7 @@ void showInitializedBanks()
 
 void SwitchLED()
 {
-  if (currentBank == 0)
-  {
-    LED.setPixelColor(0, LED.Color(b0Color));
-  }
-  else if (currentBank == 1)
-  {
-    LED.setPixelColor(0, LED.Color(b1Color));
-  }
-  else if (currentBank == 2)
-  {
-    LED.setPixelColor(0, LED.Color(b2Color));
-  }
-  else if (currentBank == 3)
-  {
-    LED.setPixelColor(0, LED.Color(b3Color));
-  }
-  else
-  {
-    LED.setPixelColor(0, LED.Color(255, 255, 255));
-  }
+  LED.setPixelColor(0, bankConfigs[currentBank].led_color);
   LED.show();
 }
 
